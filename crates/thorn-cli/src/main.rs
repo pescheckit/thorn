@@ -211,7 +211,11 @@ fn main() {
                     if ok && graph_target.exists() {
                         if let Ok(s) = std::fs::read_to_string(&graph_target) {
                             if let Ok(b) = serde_json::from_str::<GraphBundle>(&s) {
-                                eprintln!("{} Loaded {} models via python", "✓".green(), b.graph.models.len());
+                                eprintln!(
+                                    "{} Loaded {} models via python",
+                                    "✓".green(),
+                                    b.graph.models.len()
+                                );
                                 if !b.diagnostics.is_empty() {
                                     DYNAMIC_DIAGNOSTICS.lock().unwrap().extend(b.diagnostics);
                                 }
@@ -283,14 +287,23 @@ fn main() {
     // DV diagnostics with module-name filenames (no "/" or ".py") are from
     // third-party packages whose source file couldn't be resolved to a local path.
     diagnostics.retain(|d| {
-        if d.code.starts_with("DV") && d.code != "DV-WARN" && d.code != "DV-ERR" && d.code != "DV-CRIT" {
+        if d.code.starts_with("DV")
+            && d.code != "DV-WARN"
+            && d.code != "DV-ERR"
+            && d.code != "DV-CRIT"
+        {
             let f = &d.filename;
             if f.contains("site-packages") || f.contains("/venv/") || f.contains("/.venv/") {
                 return false;
             }
             // Module-only filenames (e.g. "qualificationcheck.forms") without path separators
             // are from third-party packages
-            if !f.contains('/') && !f.contains(".py") && f != "migrations" && f != "django.checks" && f != "settings" {
+            if !f.contains('/')
+                && !f.contains(".py")
+                && f != "migrations"
+                && f != "django.checks"
+                && f != "settings"
+            {
                 return false;
             }
         }
@@ -341,7 +354,9 @@ fn main() {
                 };
                 let level = d.level.label().dimmed();
                 // Collapse multi-line messages (e.g. DV202 migration lists) to a single line
-                let msg = d.message.lines()
+                let msg = d
+                    .message
+                    .lines()
                     .map(|l| l.trim())
                     .filter(|l| !l.is_empty())
                     .collect::<Vec<_>>()

@@ -85,8 +85,16 @@ impl Diagnostic {
 impl std::fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match (self.line, self.col) {
-            (Some(line), Some(col)) => write!(f, "{}:{}:{}: {} {}", self.filename, line, col, self.code, self.message),
-            (Some(line), None) => write!(f, "{}:{}: {} {}", self.filename, line, self.code, self.message),
+            (Some(line), Some(col)) => write!(
+                f,
+                "{}:{}:{}: {} {}",
+                self.filename, line, col, self.code, self.message
+            ),
+            (Some(line), None) => write!(
+                f,
+                "{}:{}: {} {}",
+                self.filename, line, self.code, self.message
+            ),
             _ => write!(f, "{}: {} {}", self.filename, self.code, self.message),
         }
     }
@@ -100,7 +108,9 @@ mod opt_range {
     struct RangePair(u32, u32);
 
     pub fn serialize<S>(range: &Option<TextRange>, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer {
+    where
+        S: Serializer,
+    {
         match range {
             Some(r) => RangePair(u32::from(r.start()), u32::from(r.end())).serialize(serializer),
             None => serializer.serialize_none(),
@@ -108,7 +118,9 @@ mod opt_range {
     }
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<TextRange>, D::Error>
-    where D: Deserializer<'de> {
+    where
+        D: Deserializer<'de>,
+    {
         let opt: Option<RangePair> = Option::deserialize(deserializer)?;
         Ok(opt.map(|p| TextRange::new(TextSize::new(p.0), TextSize::new(p.1))))
     }

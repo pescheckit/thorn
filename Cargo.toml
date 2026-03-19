@@ -33,3 +33,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 colored = "2.1"
 toml = "0.8"
 thorn-django = { git = "https://github.com/pescheckit/thorn-django" }
+
+# Ensure thorn-django uses our local thorn-api (not a separate git copy)
+[patch."https://github.com/pescheckit/thorn"]
+thorn-api = { path = "crates/thorn-api" }
