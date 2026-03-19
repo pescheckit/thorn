@@ -32,6 +32,7 @@ colored = "2.1"
 toml = "0.8"
 thorn-django = { git = "https://github.com/pescheckit/thorn-django" }
 
-# Ensure thorn-django uses our local thorn-api (not a separate git copy)
+# In CI, thorn-django fetches thorn-api from this same repo via git.
+# This patch ensures it uses the local copy instead, avoiding version skew.
 [patch."https://github.com/pescheckit/thorn"]
 thorn-api = { path = "crates/thorn-api" }
