@@ -214,7 +214,7 @@ pub struct Manager {
 }
 
 // ── Backward-compatible type aliases ─────────────────────────────────────
-// These keep existing code (thorn-bridge, thorn-django) compiling without changes.
+// These keep existing plugin code compiling without changes.
 
 /// Alias for backward compatibility.
 pub type ModelGraph = AppGraph;

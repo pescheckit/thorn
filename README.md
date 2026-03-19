@@ -9,13 +9,13 @@ Thorn provides the **CLI** and **plugin API** — framework-specific intelligenc
 ```
 ┌─────────────────────────────────────────────┐
 │                  thorn-cli                   │
-│         CLI, config, output formatting       │
+│       CLI, output formatting, config         │
 ├─────────────────────────────────────────────┤
 │                  thorn-core                  │
 │     File discovery, parallel linting (Rayon) │
 ├─────────────────────────────────────────────┤
 │                  thorn-api                   │
-│   Plugin trait, Diagnostic, Level, AppGraph  │
+│  Plugin trait, Diagnostic, Level, AppGraph   │
 └──────────────────────┬──────────────────────┘
                        │ implements Plugin
            ┌───────────┴───────────┐
@@ -28,18 +28,19 @@ Thorn provides the **CLI** and **plugin API** — framework-specific intelligenc
     └─────────────┘        └──────────────┘
 ```
 
-Thorn itself has **no Django knowledge**. It provides:
-- Parallel file discovery and AST parsing (via Ruff's parser)
-- A plugin registration system
+Thorn itself has **no framework knowledge**. It provides:
+- Parallel file discovery and AST parsing (via Ruff's Python parser)
+- A plugin registration system with dynamic CLI parameters
 - Check levels (`fix`, `improve`, `all`)
-- Config from `pyproject.toml` (`[tool.thorn]`)
 - Text and JSON output
 - Inline suppression (`# noqa: XX001`, `# thorn: ignore[XX001]`)
+
+Plugins own everything framework-specific: model graphs, runtime bridges, settings checks, and their own config sections.
 
 ## Quick Start
 
 ```sh
-# Install a plugin (e.g. thorn-django) and lint
+# Lint (plugins add their own flags)
 thorn .
 
 # Only show bugs and security issues
@@ -62,8 +63,9 @@ thorn . --ignore DJ015 --ignore DJ034
 [tool.thorn]
 exclude = ["*/migrations/*"]
 ignore = ["DJ015"]
-graph_file = ".thorn/graph.json"
 ```
+
+Plugins define their own config sections (e.g. `[tool.thorn-django]`).
 
 ## Workspace
 
@@ -72,13 +74,24 @@ graph_file = ".thorn/graph.json"
 | `thorn-api` | Plugin trait, `Diagnostic`, `AppGraph`, `Level` — the stable API plugins depend on |
 | `thorn-core` | Linter engine — file discovery, parallel AST linting, graph checks |
 | `thorn-cli` | CLI binary — argument parsing, config loading, output formatting |
-| `thorn-bridge` | PyO3 bridge utilities for plugins that need Python interop |
 
-## Building
+## Plugin System
+
+Plugins declare their own CLI parameters:
+```
+--{plugin-name}-{param}
+```
+
+For example, [thorn-django](https://github.com/pescheckit/thorn-django) adds:
+```
+--django-settings    Django settings module
+--django-graph-file  Pre-generated model graph
+```
+
+## Installation
 
 ```sh
-cargo build --release
-./target/release/thorn --help
+cargo install --git https://github.com/pescheckit/thorn
 ```
 
 ## License
