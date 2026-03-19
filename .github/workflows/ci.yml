@@ -15,10 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: pescheckit/thorn-django
-          path: ../thorn-django
+      - run: git clone --depth 1 https://github.com/pescheckit/thorn-django ../thorn-django
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --workspace
@@ -28,10 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: pescheckit/thorn-django
-          path: ../thorn-django
+      - run: git clone --depth 1 https://github.com/pescheckit/thorn-django ../thorn-django
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -43,10 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: pescheckit/thorn-django
-          path: ../thorn-django
+      - run: git clone --depth 1 https://github.com/pescheckit/thorn-django ../thorn-django
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
