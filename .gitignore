@@ -6,3 +6,4 @@
 .idea/
 .vscode/
 .claude/
+.cargo/config.toml
