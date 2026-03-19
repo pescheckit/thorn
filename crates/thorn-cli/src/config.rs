@@ -12,8 +12,6 @@ pub struct ThornConfig {
     pub exclude: Vec<String>,
     /// Paths/patterns to include (overrides exclude).
     pub include: Vec<String>,
-    /// Pre-extracted graph file path.
-    pub graph_file: Option<String>,
     /// Rule codes to ignore globally (e.g. ["DJ001", "DJ026"]).
     pub ignore: Vec<String>,
 }
@@ -46,9 +44,6 @@ impl ThornConfig {
                     .filter_map(|v| v.as_str().map(String::from))
                     .collect();
             }
-            if let Some(graph) = thorn.get("graph-file").and_then(|v| v.as_str()) {
-                config.graph_file = Some(graph.to_string());
-            }
             if let Some(ignore) = thorn.get("ignore").and_then(|v| v.as_array()) {
                 config.ignore = ignore
                     .iter()
@@ -58,20 +53,6 @@ impl ThornConfig {
         }
 
         Ok(config)
-    }
-
-    /// Merge CLI args on top of file config. CLI args win.
-    pub fn merge_cli(
-        &mut self,
-        cli_exclude: &[String],
-        cli_graph_file: &Option<std::path::PathBuf>,
-    ) {
-        if !cli_exclude.is_empty() {
-            self.exclude.extend(cli_exclude.iter().cloned());
-        }
-        if let Some(gf) = cli_graph_file {
-            self.graph_file = Some(gf.to_string_lossy().to_string());
-        }
     }
 }
 

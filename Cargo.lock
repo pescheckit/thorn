@@ -721,7 +721,6 @@ dependencies = [
  "thorn-core",
  "thorn-django",
  "toml",
- "walkdir",
 ]
 
 [[package]]
@@ -739,12 +738,16 @@ dependencies = [
 name = "thorn-django"
 version = "0.1.0"
 dependencies = [
+ "colored",
  "pyo3",
  "ruff_python_ast",
  "ruff_python_parser",
  "ruff_text_size",
+ "serde",
+ "serde_json",
  "thorn-api",
  "toml",
+ "walkdir",
 ]
 
 [[package]]

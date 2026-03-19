@@ -185,6 +185,14 @@ impl Linter {
             .map(|p| (p.name(), p.prefix()))
             .collect()
     }
+
+    /// Ask all registered plugins for their framework-specific excludes.
+    pub fn plugin_config_excludes(&self, toml_content: &str) -> Vec<Vec<String>> {
+        self.plugins
+            .iter()
+            .map(|p| p.read_config_excludes(toml_content))
+            .collect()
+    }
 }
 
 /// Discover all .py files under a directory, respecting exclude patterns.
