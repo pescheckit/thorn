@@ -192,7 +192,7 @@ fn discover_python_files(dir: &Path, excludes: &[String]) -> Vec<PathBuf> {
     WalkDir::new(dir)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "py"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "py"))
         .filter(|e| {
             let path = e.path().to_string_lossy();
             // Skip common non-source directories
