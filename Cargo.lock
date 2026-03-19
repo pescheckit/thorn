@@ -712,7 +712,7 @@ dependencies = [
 [[package]]
 name = "thorn-api"
 version = "0.1.0"
-source = "git+https://github.com/pescheckit/thorn#7e7d10bedc8a71a74d40c63fa614d83edd470593"
+source = "git+https://github.com/pescheckit/thorn#0a8ad12ad34eb01b7b8e21bd1dcafcae9c01ac38"
 dependencies = [
  "ruff_python_ast",
  "ruff_text_size",
@@ -748,7 +748,7 @@ dependencies = [
 [[package]]
 name = "thorn-django"
 version = "0.1.0"
-source = "git+https://github.com/pescheckit/thorn-django#ac0bf6a4273224483b606304e67d33c03b9adf42"
+source = "git+https://github.com/pescheckit/thorn-django#4dbbf647ceea8e392bd1816e763cd1e1cb462589"
 dependencies = [
  "pyo3",
  "ruff_python_ast",
