@@ -1,0 +1,13 @@
+[package]
+name = "thorn-core"
+description = "Core linting runner for Thorn"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+thorn-api = { workspace = true }
+ruff_python_parser = { workspace = true }
+ruff_python_ast = { workspace = true }
+rayon = { workspace = true }
+walkdir = { workspace = true }

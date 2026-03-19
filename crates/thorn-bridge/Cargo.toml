@@ -1,0 +1,10 @@
+[package]
+name = "thorn-bridge"
+description = "PyO3 bridge to extract Django model metadata at runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+thorn-api = { workspace = true }
+pyo3 = { workspace = true }

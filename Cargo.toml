@@ -1,0 +1,35 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/thorn-api",
+    "crates/thorn-core",
+    "crates/thorn-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["Bram"]
+
+[workspace.dependencies]
+# Internal crates
+thorn-api = { path = "crates/thorn-api" }
+thorn-bridge = { path = "crates/thorn-bridge" }
+thorn-core = { path = "crates/thorn-core" }
+
+# Ruff crates (git deps — not published on crates.io)
+ruff_python_parser = { git = "https://github.com/astral-sh/ruff", tag = "0.11.6" }
+ruff_python_ast = { git = "https://github.com/astral-sh/ruff", tag = "0.11.6" }
+ruff_text_size = { git = "https://github.com/astral-sh/ruff", tag = "0.11.6" }
+
+# External
+pyo3 = { version = "0.23", features = ["auto-initialize", "abi3-py311"] }
+rayon = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+walkdir = "2.5"
+clap = { version = "4.5", features = ["derive", "env"] }
+colored = "2.1"
+toml = "0.8"
+thorn-django = { path = "../thorn-django" }

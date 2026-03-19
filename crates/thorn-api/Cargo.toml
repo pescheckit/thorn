@@ -1,0 +1,11 @@
+[package]
+name = "thorn-api"
+description = "Stable plugin API for the Thorn Python linter"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ruff_python_ast = { workspace = true }
+ruff_text_size = { workspace = true }
+serde = { workspace = true }
