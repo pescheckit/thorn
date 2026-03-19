@@ -1,13 +1,9 @@
 [package]
 name = "thorn-cli"
-description = "CLI binary for the Thorn linter"
+description = "CLI library for the Thorn linter — plugins call thorn_cli::run() to build their binary"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-
-[[bin]]
-name = "thorn"
-path = "src/main.rs"
 
 [dependencies]
 thorn-api = { workspace = true }
