@@ -2,7 +2,7 @@
 
 A fast, extensible linter engine with live framework introspection. Built in Rust.
 
-Thorn provides the **CLI** and **plugin API** — framework-specific intelligence lives in plugins like [thorn-django](https://github.com/anthropics/thorn-django).
+Thorn provides the **CLI** and **plugin API** — framework-specific intelligence lives in plugins like [thorn-django](https://github.com/pescheckit/thorn-django).
 
 ## Architecture
 
