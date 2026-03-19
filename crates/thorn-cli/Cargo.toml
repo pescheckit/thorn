@@ -9,10 +9,6 @@ license.workspace = true
 name = "thorn"
 path = "src/main.rs"
 
-[features]
-default = ["plugin-django"]
-plugin-django = ["dep:thorn-django"]
-
 [dependencies]
 thorn-api = { workspace = true }
 thorn-core = { workspace = true }
@@ -21,6 +17,3 @@ colored = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }
-
-# Plugin crates — all optional, gated behind features
-thorn-django = { workspace = true, optional = true }

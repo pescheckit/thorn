@@ -30,11 +30,3 @@ walkdir = "2.5"
 clap = { version = "4.5", features = ["derive", "env"] }
 colored = "2.1"
 toml = "0.8"
-thorn-django = { git = "https://github.com/pescheckit/thorn-django" }
-
-# Use local checkouts when available (locally + CI)
-[patch."https://github.com/pescheckit/thorn-django"]
-thorn-django = { path = "../thorn-django" }
-
-[patch."https://github.com/pescheckit/thorn"]
-thorn-api = { path = "crates/thorn-api" }
