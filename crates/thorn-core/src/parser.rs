@@ -63,9 +63,15 @@ fn parse_stmt(node: Node, src: &str) -> Option<Stmt> {
         "import_from_statement" => parse_import_from(node, src),
         "global_statement" => parse_global(node, src),
         "nonlocal_statement" => parse_nonlocal(node, src),
-        "pass_statement" => Some(Stmt::Pass(StmtPass { range: range_of(node) })),
-        "break_statement" => Some(Stmt::Break(StmtBreak { range: range_of(node) })),
-        "continue_statement" => Some(Stmt::Continue(StmtContinue { range: range_of(node) })),
+        "pass_statement" => Some(Stmt::Pass(StmtPass {
+            range: range_of(node),
+        })),
+        "break_statement" => Some(Stmt::Break(StmtBreak {
+            range: range_of(node),
+        })),
+        "continue_statement" => Some(Stmt::Continue(StmtContinue {
+            range: range_of(node),
+        })),
         "delete_statement" => parse_delete(node, src),
         _ => None,
     }
@@ -84,7 +90,9 @@ fn parse_function_def(node: Node, src: &str) -> Option<Stmt> {
                     }
                 }
             } else if child.kind() == "function_definition" {
-                return Some(Stmt::FunctionDef(build_function_def(child, src, decorators, false)));
+                return Some(Stmt::FunctionDef(build_function_def(
+                    child, src, decorators, false,
+                )));
             } else if child.kind() == "class_definition" {
                 return parse_class_def(child, src, decorators);
             }
@@ -93,15 +101,24 @@ fn parse_function_def(node: Node, src: &str) -> Option<Stmt> {
     }
 
     let is_async = text_of(node, src).starts_with("async");
-    Some(Stmt::FunctionDef(build_function_def(node, src, decorators, is_async)))
+    Some(Stmt::FunctionDef(build_function_def(
+        node, src, decorators, is_async,
+    )))
 }
 
-fn build_function_def(node: Node, src: &str, decorators: Vec<Expr>, is_async: bool) -> StmtFunctionDef {
-    let name = node.child_by_field_name("name")
+fn build_function_def(
+    node: Node,
+    src: &str,
+    decorators: Vec<Expr>,
+    is_async: bool,
+) -> StmtFunctionDef {
+    let name = node
+        .child_by_field_name("name")
         .map(|n| text_of(n, src).to_string())
         .unwrap_or_default();
 
-    let parameters = node.child_by_field_name("parameters")
+    let parameters = node
+        .child_by_field_name("parameters")
         .map(|n| parse_parameters(n, src))
         .unwrap_or(Parameters {
             args: vec![],
@@ -112,11 +129,13 @@ fn build_function_def(node: Node, src: &str, decorators: Vec<Expr>, is_async: bo
             range: range_of(node),
         });
 
-    let returns = node.child_by_field_name("return_type")
+    let returns = node
+        .child_by_field_name("return_type")
         .and_then(|n| parse_expr(n, src))
         .map(Box::new);
 
-    let body = node.child_by_field_name("body")
+    let body = node
+        .child_by_field_name("body")
         .map(|n| parse_block(n, src))
         .unwrap_or_default();
 
@@ -153,7 +172,9 @@ fn parse_parameters(node: Node, src: &str) -> Parameters {
                 // *args or **kwargs
                 let is_kwargs = child.kind() == "dictionary_splat_pattern";
                 let inner = child.child(1).or_else(|| child.child(0));
-                let name = inner.map(|n| text_of(n, src).to_string()).unwrap_or_default();
+                let name = inner
+                    .map(|n| text_of(n, src).to_string())
+                    .unwrap_or_default();
                 let param = Parameter {
                     name,
                     annotation: None,
@@ -193,10 +214,12 @@ fn parse_parameter(node: Node, src: &str) -> Parameter {
             range: range_of(node),
         },
         "typed_parameter" => {
-            let name = node.child(0)
+            let name = node
+                .child(0)
                 .map(|n| text_of(n, src).to_string())
                 .unwrap_or_default();
-            let annotation = node.child_by_field_name("type")
+            let annotation = node
+                .child_by_field_name("type")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new);
             Parameter {
@@ -208,8 +231,11 @@ fn parse_parameter(node: Node, src: &str) -> Parameter {
         }
         "default_parameter" => {
             let name_node = node.child_by_field_name("name");
-            let name = name_node.map(|n| text_of(n, src).to_string()).unwrap_or_default();
-            let default = node.child_by_field_name("value")
+            let name = name_node
+                .map(|n| text_of(n, src).to_string())
+                .unwrap_or_default();
+            let default = node
+                .child_by_field_name("value")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new);
             Parameter {
@@ -221,11 +247,15 @@ fn parse_parameter(node: Node, src: &str) -> Parameter {
         }
         "typed_default_parameter" => {
             let name_node = node.child_by_field_name("name");
-            let name = name_node.map(|n| text_of(n, src).to_string()).unwrap_or_default();
-            let annotation = node.child_by_field_name("type")
+            let name = name_node
+                .map(|n| text_of(n, src).to_string())
+                .unwrap_or_default();
+            let annotation = node
+                .child_by_field_name("type")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new);
-            let default = node.child_by_field_name("value")
+            let default = node
+                .child_by_field_name("value")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new);
             Parameter {
@@ -245,14 +275,17 @@ fn parse_parameter(node: Node, src: &str) -> Parameter {
 }
 
 fn parse_class_def(node: Node, src: &str, decorators: Vec<Expr>) -> Option<Stmt> {
-    let name = node.child_by_field_name("name")
+    let name = node
+        .child_by_field_name("name")
         .map(|n| text_of(n, src).to_string())
         .unwrap_or_default();
 
-    let arguments = node.child_by_field_name("superclasses")
+    let arguments = node
+        .child_by_field_name("superclasses")
         .map(|n| Box::new(parse_arguments(n, src)));
 
-    let body = node.child_by_field_name("body")
+    let body = node
+        .child_by_field_name("body")
         .map(|n| parse_block(n, src))
         .unwrap_or_default();
 
@@ -266,10 +299,11 @@ fn parse_class_def(node: Node, src: &str, decorators: Vec<Expr>) -> Option<Stmt>
 }
 
 fn parse_return(node: Node, src: &str) -> Option<Stmt> {
-    let value = node.child(1)
-        .and_then(|n| parse_expr(n, src))
-        .map(Box::new);
-    Some(Stmt::Return(StmtReturn { value, range: range_of(node) }))
+    let value = node.child(1).and_then(|n| parse_expr(n, src)).map(Box::new);
+    Some(Stmt::Return(StmtReturn {
+        value,
+        range: range_of(node),
+    }))
 }
 
 fn parse_expr_stmt(node: Node, src: &str) -> Option<Stmt> {
@@ -289,9 +323,11 @@ fn parse_expr_stmt(node: Node, src: &str) -> Option<Stmt> {
 }
 
 fn parse_assignment(node: Node, src: &str) -> Option<Stmt> {
-    let left = node.child_by_field_name("left")
+    let left = node
+        .child_by_field_name("left")
         .and_then(|n| parse_expr(n, src));
-    let right = node.child_by_field_name("right")
+    let right = node
+        .child_by_field_name("right")
         .and_then(|n| parse_expr(n, src));
 
     // Check for type annotation
@@ -318,13 +354,16 @@ fn parse_assignment(node: Node, src: &str) -> Option<Stmt> {
 }
 
 fn parse_aug_assignment(node: Node, src: &str) -> Option<Stmt> {
-    let target = node.child_by_field_name("left")
+    let target = node
+        .child_by_field_name("left")
         .and_then(|n| parse_expr(n, src))
         .map(Box::new)?;
-    let value = node.child_by_field_name("right")
+    let value = node
+        .child_by_field_name("right")
         .and_then(|n| parse_expr(n, src))
         .map(Box::new)?;
-    let op_text = node.child_by_field_name("operator")
+    let op_text = node
+        .child_by_field_name("operator")
         .map(|n| text_of(n, src))
         .unwrap_or("+=");
     let op = match op_text {
@@ -343,20 +382,29 @@ fn parse_aug_assignment(node: Node, src: &str) -> Option<Stmt> {
         "@=" => Operator::MatMult,
         _ => Operator::Add,
     };
-    Some(Stmt::AugAssign(StmtAugAssign { target, op, value, range: range_of(node) }))
+    Some(Stmt::AugAssign(StmtAugAssign {
+        target,
+        op,
+        value,
+        range: range_of(node),
+    }))
 }
 
 fn parse_for(node: Node, src: &str) -> Option<Stmt> {
-    let target = node.child_by_field_name("left")
+    let target = node
+        .child_by_field_name("left")
         .and_then(|n| parse_expr(n, src))
         .map(Box::new)?;
-    let iter = node.child_by_field_name("right")
+    let iter = node
+        .child_by_field_name("right")
         .and_then(|n| parse_expr(n, src))
         .map(Box::new)?;
-    let body = node.child_by_field_name("body")
+    let body = node
+        .child_by_field_name("body")
         .map(|n| parse_block(n, src))
         .unwrap_or_default();
-    let orelse = node.child_by_field_name("alternative")
+    let orelse = node
+        .child_by_field_name("alternative")
         .map(|n| parse_block(n, src))
         .unwrap_or_default();
     Some(Stmt::For(StmtFor {
@@ -370,23 +418,33 @@ fn parse_for(node: Node, src: &str) -> Option<Stmt> {
 }
 
 fn parse_while(node: Node, src: &str) -> Option<Stmt> {
-    let test = node.child_by_field_name("condition")
+    let test = node
+        .child_by_field_name("condition")
         .and_then(|n| parse_expr(n, src))
         .map(Box::new)?;
-    let body = node.child_by_field_name("body")
+    let body = node
+        .child_by_field_name("body")
         .map(|n| parse_block(n, src))
         .unwrap_or_default();
-    let orelse = node.child_by_field_name("alternative")
+    let orelse = node
+        .child_by_field_name("alternative")
         .map(|n| parse_block(n, src))
         .unwrap_or_default();
-    Some(Stmt::While(StmtWhile { test, body, orelse, range: range_of(node) }))
+    Some(Stmt::While(StmtWhile {
+        test,
+        body,
+        orelse,
+        range: range_of(node),
+    }))
 }
 
 fn parse_if(node: Node, src: &str) -> Option<Stmt> {
-    let test = node.child_by_field_name("condition")
+    let test = node
+        .child_by_field_name("condition")
         .and_then(|n| parse_expr(n, src))
         .map(Box::new)?;
-    let body = node.child_by_field_name("consequence")
+    let body = node
+        .child_by_field_name("consequence")
         .map(|n| parse_block(n, src))
         .unwrap_or_default();
 
@@ -395,9 +453,11 @@ fn parse_if(node: Node, src: &str) -> Option<Stmt> {
     for child in node.children(&mut cursor) {
         match child.kind() {
             "elif_clause" => {
-                let elif_test = child.child_by_field_name("condition")
+                let elif_test = child
+                    .child_by_field_name("condition")
                     .and_then(|n| parse_expr(n, src));
-                let elif_body = child.child_by_field_name("consequence")
+                let elif_body = child
+                    .child_by_field_name("consequence")
                     .map(|n| parse_block(n, src))
                     .unwrap_or_default();
                 elif_else_clauses.push(ElifElseClause {
@@ -407,7 +467,8 @@ fn parse_if(node: Node, src: &str) -> Option<Stmt> {
                 });
             }
             "else_clause" => {
-                let else_body = child.child_by_field_name("body")
+                let else_body = child
+                    .child_by_field_name("body")
                     .map(|n| parse_block(n, src))
                     .unwrap_or_default();
                 elif_else_clauses.push(ElifElseClause {
@@ -420,7 +481,12 @@ fn parse_if(node: Node, src: &str) -> Option<Stmt> {
         }
     }
 
-    Some(Stmt::If(StmtIf { test, body, elif_else_clauses, range: range_of(node) }))
+    Some(Stmt::If(StmtIf {
+        test,
+        body,
+        elif_else_clauses,
+        range: range_of(node),
+    }))
 }
 
 fn parse_with(node: Node, src: &str) -> Option<Stmt> {
@@ -431,9 +497,11 @@ fn parse_with(node: Node, src: &str) -> Option<Stmt> {
             let mut clause_cursor = child.walk();
             for item_node in child.children(&mut clause_cursor) {
                 if item_node.kind() == "with_item" {
-                    let context_expr = item_node.child_by_field_name("value")
+                    let context_expr = item_node
+                        .child_by_field_name("value")
                         .and_then(|n| parse_expr(n, src));
-                    let optional_vars = item_node.child_by_field_name("alias")
+                    let optional_vars = item_node
+                        .child_by_field_name("alias")
                         .and_then(|n| parse_expr(n, src));
                     if let Some(ce) = context_expr {
                         items.push(WithItem {
@@ -460,7 +528,8 @@ fn parse_with(node: Node, src: &str) -> Option<Stmt> {
             }
         }
     }
-    let body = node.child_by_field_name("body")
+    let body = node
+        .child_by_field_name("body")
         .map(|n| parse_block(n, src))
         .unwrap_or_default();
     Some(Stmt::With(StmtWith {
@@ -492,7 +561,11 @@ fn parse_raise(node: Node, src: &str) -> Option<Stmt> {
             }
         }
     }
-    Some(Stmt::Raise(StmtRaise { exc, cause, range: range_of(node) }))
+    Some(Stmt::Raise(StmtRaise {
+        exc,
+        cause,
+        range: range_of(node),
+    }))
 }
 
 fn parse_try(node: Node, src: &str) -> Option<Stmt> {
@@ -520,11 +593,13 @@ fn parse_try(node: Node, src: &str) -> Option<Stmt> {
                         // `except ValueError as e:` — first named child is the
                         // type, the as_pattern_target holds the binding name.
                         let mut vc = v.walk();
-                        let type_expr = v.children(&mut vc)
+                        let type_expr = v
+                            .children(&mut vc)
                             .find(|c| c.is_named() && c.kind() != "as_pattern_target")
                             .and_then(|n| parse_expr(n, src))
                             .map(Box::new);
-                        let alias = v.children(&mut v.walk())
+                        let alias = v
+                            .children(&mut v.walk())
                             .find(|c| c.kind() == "as_pattern_target")
                             .and_then(|c| c.child(0))
                             .map(|n| text_of(n, src).to_string());
@@ -539,7 +614,8 @@ fn parse_try(node: Node, src: &str) -> Option<Stmt> {
                 };
                 // The except clause body block may not have a field name,
                 // so fall back to finding the first "block" child.
-                let handler_body = child.child_by_field_name("body")
+                let handler_body = child
+                    .child_by_field_name("body")
                     .or_else(|| {
                         let mut ec = child.walk();
                         let block = child.children(&mut ec).find(|c| c.kind() == "block");
@@ -555,12 +631,14 @@ fn parse_try(node: Node, src: &str) -> Option<Stmt> {
                 });
             }
             "else_clause" => {
-                orelse = child.child_by_field_name("body")
+                orelse = child
+                    .child_by_field_name("body")
                     .map(|n| parse_block(n, src))
                     .unwrap_or_default();
             }
             "finally_clause" => {
-                finalbody = child.child_by_field_name("body")
+                finalbody = child
+                    .child_by_field_name("body")
                     .map(|n| parse_block(n, src))
                     .unwrap_or_default();
             }
@@ -568,7 +646,13 @@ fn parse_try(node: Node, src: &str) -> Option<Stmt> {
         }
     }
 
-    Some(Stmt::Try(StmtTry { body, handlers, orelse, finalbody, range: range_of(node) }))
+    Some(Stmt::Try(StmtTry {
+        body,
+        handlers,
+        orelse,
+        finalbody,
+        range: range_of(node),
+    }))
 }
 
 fn parse_assert(node: Node, src: &str) -> Option<Stmt> {
@@ -581,7 +665,11 @@ fn parse_assert(node: Node, src: &str) -> Option<Stmt> {
     }
     let test = exprs.first().cloned().map(Box::new)?;
     let msg = exprs.get(1).cloned().map(Box::new);
-    Some(Stmt::Assert(StmtAssert { test, msg, range: range_of(node) }))
+    Some(Stmt::Assert(StmtAssert {
+        test,
+        msg,
+        range: range_of(node),
+    }))
 }
 
 fn parse_import(node: Node, src: &str) -> Option<Stmt> {
@@ -592,7 +680,10 @@ fn parse_import(node: Node, src: &str) -> Option<Stmt> {
             names.push(parse_alias(child, src));
         }
     }
-    Some(Stmt::Import(StmtImport { names, range: range_of(node) }))
+    Some(Stmt::Import(StmtImport {
+        names,
+        range: range_of(node),
+    }))
 }
 
 fn parse_import_from(node: Node, src: &str) -> Option<Stmt> {
@@ -658,17 +749,28 @@ fn parse_import_from(node: Node, src: &str) -> Option<Stmt> {
         }
     }
 
-    Some(Stmt::ImportFrom(StmtImportFrom { module, names, level, range: range_of(node) }))
+    Some(Stmt::ImportFrom(StmtImportFrom {
+        module,
+        names,
+        level,
+        range: range_of(node),
+    }))
 }
 
 fn parse_alias(node: Node, src: &str) -> Alias {
     if node.kind() == "aliased_import" {
-        let name = node.child_by_field_name("name")
+        let name = node
+            .child_by_field_name("name")
             .map(|n| text_of(n, src).to_string())
             .unwrap_or_default();
-        let asname = node.child_by_field_name("alias")
+        let asname = node
+            .child_by_field_name("alias")
             .map(|n| text_of(n, src).to_string());
-        Alias { name, asname, range: range_of(node) }
+        Alias {
+            name,
+            asname,
+            range: range_of(node),
+        }
     } else {
         Alias {
             name: text_of(node, src).to_string(),
@@ -686,7 +788,10 @@ fn parse_global(node: Node, src: &str) -> Option<Stmt> {
             names.push(text_of(child, src).to_string());
         }
     }
-    Some(Stmt::Global(StmtGlobal { names, range: range_of(node) }))
+    Some(Stmt::Global(StmtGlobal {
+        names,
+        range: range_of(node),
+    }))
 }
 
 fn parse_nonlocal(node: Node, src: &str) -> Option<Stmt> {
@@ -697,7 +802,10 @@ fn parse_nonlocal(node: Node, src: &str) -> Option<Stmt> {
             names.push(text_of(child, src).to_string());
         }
     }
-    Some(Stmt::Nonlocal(StmtNonlocal { names, range: range_of(node) }))
+    Some(Stmt::Nonlocal(StmtNonlocal {
+        names,
+        range: range_of(node),
+    }))
 }
 
 fn parse_delete(node: Node, src: &str) -> Option<Stmt> {
@@ -708,7 +816,10 @@ fn parse_delete(node: Node, src: &str) -> Option<Stmt> {
             targets.push(expr);
         }
     }
-    Some(Stmt::Delete(StmtDelete { targets, range: range_of(node) }))
+    Some(Stmt::Delete(StmtDelete {
+        targets,
+        range: range_of(node),
+    }))
 }
 
 // ── Expression parsing ─────────────────────────────────────────────
@@ -732,13 +843,25 @@ fn extract_string_content(node: Node, src: &str) -> String {
 fn strip_string_quotes(s: &str) -> &str {
     // Skip prefix chars like b, r, u, B, R, U
     let without_prefix = s.trim_start_matches(|c: char| c.is_ascii_alphabetic());
-    if let Some(rest) = without_prefix.strip_prefix("\"\"\"").and_then(|r| r.strip_suffix("\"\"\"")) {
+    if let Some(rest) = without_prefix
+        .strip_prefix("\"\"\"")
+        .and_then(|r| r.strip_suffix("\"\"\""))
+    {
         rest
-    } else if let Some(rest) = without_prefix.strip_prefix("'''").and_then(|r| r.strip_suffix("'''")) {
+    } else if let Some(rest) = without_prefix
+        .strip_prefix("'''")
+        .and_then(|r| r.strip_suffix("'''"))
+    {
         rest
-    } else if let Some(rest) = without_prefix.strip_prefix('"').and_then(|r| r.strip_suffix('"')) {
+    } else if let Some(rest) = without_prefix
+        .strip_prefix('"')
+        .and_then(|r| r.strip_suffix('"'))
+    {
         rest
-    } else if let Some(rest) = without_prefix.strip_prefix('\'').and_then(|r| r.strip_suffix('\'')) {
+    } else if let Some(rest) = without_prefix
+        .strip_prefix('\'')
+        .and_then(|r| r.strip_suffix('\''))
+    {
         rest
     } else {
         s
@@ -752,14 +875,20 @@ fn parse_expr(node: Node, src: &str) -> Option<Expr> {
             range: range_of(node),
         })),
         "integer" => {
-            let val = text_of(node, src).replace('_', "").parse::<i64>().unwrap_or(0);
+            let val = text_of(node, src)
+                .replace('_', "")
+                .parse::<i64>()
+                .unwrap_or(0);
             Some(Expr::NumberLiteral(ExprNumberLiteral {
                 value: Number::Int(val),
                 range: range_of(node),
             }))
         }
         "float" => {
-            let val = text_of(node, src).replace('_', "").parse::<f64>().unwrap_or(0.0);
+            let val = text_of(node, src)
+                .replace('_', "")
+                .parse::<f64>()
+                .unwrap_or(0.0);
             Some(Expr::NumberLiteral(ExprNumberLiteral {
                 value: Number::Float(val),
                 range: range_of(node),
@@ -767,8 +896,10 @@ fn parse_expr(node: Node, src: &str) -> Option<Expr> {
         }
         "string" => {
             let raw = text_of(node, src);
-            let is_fstring = raw.starts_with("f\"") || raw.starts_with("f'")
-                || raw.starts_with("F\"") || raw.starts_with("F'");
+            let is_fstring = raw.starts_with("f\"")
+                || raw.starts_with("f'")
+                || raw.starts_with("F\"")
+                || raw.starts_with("F'");
             if is_fstring {
                 Some(Expr::FString(ExprFString {
                     parts: vec![FStringPart::Literal(raw.to_string())],
@@ -791,8 +922,10 @@ fn parse_expr(node: Node, src: &str) -> Option<Expr> {
             for child in node.children(&mut cursor) {
                 if child.kind() == "string" {
                     let raw = text_of(child, src);
-                    let is_fstring = raw.starts_with("f\"") || raw.starts_with("f'")
-                        || raw.starts_with("F\"") || raw.starts_with("F'");
+                    let is_fstring = raw.starts_with("f\"")
+                        || raw.starts_with("f'")
+                        || raw.starts_with("F\"")
+                        || raw.starts_with("F'");
                     if is_fstring {
                         // If any part is an f-string, return the whole thing as FString
                         return Some(Expr::FString(ExprFString {
@@ -808,45 +941,80 @@ fn parse_expr(node: Node, src: &str) -> Option<Expr> {
                 range: range_of(node),
             }))
         }
-        "true" => Some(Expr::BooleanLiteral(ExprBooleanLiteral { value: true, range: range_of(node) })),
-        "false" => Some(Expr::BooleanLiteral(ExprBooleanLiteral { value: false, range: range_of(node) })),
-        "none" => Some(Expr::NoneLiteral(ExprNoneLiteral { range: range_of(node) })),
-        "ellipsis" => Some(Expr::EllipsisLiteral(ExprEllipsisLiteral { range: range_of(node) })),
+        "true" => Some(Expr::BooleanLiteral(ExprBooleanLiteral {
+            value: true,
+            range: range_of(node),
+        })),
+        "false" => Some(Expr::BooleanLiteral(ExprBooleanLiteral {
+            value: false,
+            range: range_of(node),
+        })),
+        "none" => Some(Expr::NoneLiteral(ExprNoneLiteral {
+            range: range_of(node),
+        })),
+        "ellipsis" => Some(Expr::EllipsisLiteral(ExprEllipsisLiteral {
+            range: range_of(node),
+        })),
         "attribute" => {
-            let obj = node.child_by_field_name("object")
+            let obj = node
+                .child_by_field_name("object")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            let attr = node.child_by_field_name("attribute")
+            let attr = node
+                .child_by_field_name("attribute")
                 .map(|n| text_of(n, src).to_string())
                 .unwrap_or_default();
-            Some(Expr::Attribute(ExprAttribute { value: obj, attr, range: range_of(node) }))
+            Some(Expr::Attribute(ExprAttribute {
+                value: obj,
+                attr,
+                range: range_of(node),
+            }))
         }
         "call" => {
-            let func = node.child_by_field_name("function")
+            let func = node
+                .child_by_field_name("function")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            let arguments = node.child_by_field_name("arguments")
+            let arguments = node
+                .child_by_field_name("arguments")
                 .map(|n| parse_arguments(n, src))
-                .unwrap_or(Arguments { args: vec![], keywords: vec![], range: range_of(node) });
-            Some(Expr::Call(ExprCall { func, arguments, range: range_of(node) }))
+                .unwrap_or(Arguments {
+                    args: vec![],
+                    keywords: vec![],
+                    range: range_of(node),
+                });
+            Some(Expr::Call(ExprCall {
+                func,
+                arguments,
+                range: range_of(node),
+            }))
         }
         "subscript" => {
-            let value = node.child_by_field_name("value")
+            let value = node
+                .child_by_field_name("value")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            let slice = node.child_by_field_name("subscript")
+            let slice = node
+                .child_by_field_name("subscript")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            Some(Expr::Subscript(ExprSubscript { value, slice, range: range_of(node) }))
+            Some(Expr::Subscript(ExprSubscript {
+                value,
+                slice,
+                range: range_of(node),
+            }))
         }
         "binary_operator" => {
-            let left = node.child_by_field_name("left")
+            let left = node
+                .child_by_field_name("left")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            let right = node.child_by_field_name("right")
+            let right = node
+                .child_by_field_name("right")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            let op_text = node.child_by_field_name("operator")
+            let op_text = node
+                .child_by_field_name("operator")
                 .map(|n| text_of(n, src))
                 .unwrap_or("+");
             let op = match op_text {
@@ -865,10 +1033,16 @@ fn parse_expr(node: Node, src: &str) -> Option<Expr> {
                 "@" => Operator::MatMult,
                 _ => Operator::Add,
             };
-            Some(Expr::BinOp(ExprBinOp { left, op, right, range: range_of(node) }))
+            Some(Expr::BinOp(ExprBinOp {
+                left,
+                op,
+                right,
+                range: range_of(node),
+            }))
         }
         "unary_operator" => {
-            let op_text = node.child_by_field_name("operator")
+            let op_text = node
+                .child_by_field_name("operator")
                 .map(|n| text_of(n, src))
                 .unwrap_or("not");
             let op = match op_text {
@@ -878,20 +1052,32 @@ fn parse_expr(node: Node, src: &str) -> Option<Expr> {
                 "~" => UnaryOp::Invert,
                 _ => UnaryOp::Not,
             };
-            let operand = node.child_by_field_name("argument")
+            let operand = node
+                .child_by_field_name("argument")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            Some(Expr::UnaryOp(ExprUnaryOp { op, operand, range: range_of(node) }))
+            Some(Expr::UnaryOp(ExprUnaryOp {
+                op,
+                operand,
+                range: range_of(node),
+            }))
         }
         "boolean_operator" => {
-            let left = node.child_by_field_name("left")
+            let left = node
+                .child_by_field_name("left")
                 .and_then(|n| parse_expr(n, src))?;
-            let right = node.child_by_field_name("right")
+            let right = node
+                .child_by_field_name("right")
                 .and_then(|n| parse_expr(n, src))?;
-            let op_text = node.child_by_field_name("operator")
+            let op_text = node
+                .child_by_field_name("operator")
                 .map(|n| text_of(n, src))
                 .unwrap_or("and");
-            let op = if op_text == "or" { BoolOp::Or } else { BoolOp::And };
+            let op = if op_text == "or" {
+                BoolOp::Or
+            } else {
+                BoolOp::And
+            };
             Some(Expr::BoolOp(ExprBoolOp {
                 op,
                 values: vec![left, right],
@@ -899,10 +1085,15 @@ fn parse_expr(node: Node, src: &str) -> Option<Expr> {
             }))
         }
         "not_operator" => {
-            let operand = node.child_by_field_name("argument")
+            let operand = node
+                .child_by_field_name("argument")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            Some(Expr::UnaryOp(ExprUnaryOp { op: UnaryOp::Not, operand, range: range_of(node) }))
+            Some(Expr::UnaryOp(ExprUnaryOp {
+                op: UnaryOp::Not,
+                operand,
+                range: range_of(node),
+            }))
         }
         "comparison_operator" => parse_comparison(node, src),
         "list" => {
@@ -913,7 +1104,10 @@ fn parse_expr(node: Node, src: &str) -> Option<Expr> {
                     elts.push(expr);
                 }
             }
-            Some(Expr::List(ExprList { elts, range: range_of(node) }))
+            Some(Expr::List(ExprList {
+                elts,
+                range: range_of(node),
+            }))
         }
         "tuple" => {
             let mut elts = Vec::new();
@@ -923,27 +1117,38 @@ fn parse_expr(node: Node, src: &str) -> Option<Expr> {
                     elts.push(expr);
                 }
             }
-            Some(Expr::Tuple(ExprTuple { elts, range: range_of(node) }))
+            Some(Expr::Tuple(ExprTuple {
+                elts,
+                range: range_of(node),
+            }))
         }
         "dictionary" => {
             let mut items = Vec::new();
             let mut cursor = node.walk();
             for child in node.children(&mut cursor) {
                 if child.kind() == "pair" {
-                    let key = child.child_by_field_name("key")
+                    let key = child
+                        .child_by_field_name("key")
                         .and_then(|n| parse_expr(n, src));
-                    let value = child.child_by_field_name("value")
+                    let value = child
+                        .child_by_field_name("value")
                         .and_then(|n| parse_expr(n, src));
                     if let Some(v) = value {
                         items.push(DictItem { key, value: v });
                     }
                 } else if child.kind() == "dictionary_splat" {
                     if let Some(expr) = child.child(1).and_then(|n| parse_expr(n, src)) {
-                        items.push(DictItem { key: None, value: expr });
+                        items.push(DictItem {
+                            key: None,
+                            value: expr,
+                        });
                     }
                 }
             }
-            Some(Expr::Dict(ExprDict { items, range: range_of(node) }))
+            Some(Expr::Dict(ExprDict {
+                items,
+                range: range_of(node),
+            }))
         }
         "set" => {
             let mut elts = Vec::new();
@@ -953,19 +1158,28 @@ fn parse_expr(node: Node, src: &str) -> Option<Expr> {
                     elts.push(expr);
                 }
             }
-            Some(Expr::Set(ExprSet { elts, range: range_of(node) }))
+            Some(Expr::Set(ExprSet {
+                elts,
+                range: range_of(node),
+            }))
         }
         "list_comprehension" => parse_list_comp(node, src),
         "set_comprehension" => parse_set_comp(node, src),
         "dictionary_comprehension" => parse_dict_comp(node, src),
         "generator_expression" => parse_generator(node, src),
         "lambda" => {
-            let parameters = node.child_by_field_name("parameters")
+            let parameters = node
+                .child_by_field_name("parameters")
                 .map(|n| Box::new(parse_parameters(n, src)));
-            let body = node.child_by_field_name("body")
+            let body = node
+                .child_by_field_name("body")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            Some(Expr::Lambda(ExprLambda { parameters, body, range: range_of(node) }))
+            Some(Expr::Lambda(ExprLambda {
+                parameters,
+                body,
+                range: range_of(node),
+            }))
         }
         "conditional_expression" => {
             // body if test else orelse
@@ -990,35 +1204,48 @@ fn parse_expr(node: Node, src: &str) -> Option<Expr> {
             }
         }
         "named_expression" => {
-            let target = node.child_by_field_name("name")
+            let target = node
+                .child_by_field_name("name")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            let value = node.child_by_field_name("value")
+            let value = node
+                .child_by_field_name("value")
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            Some(Expr::Named(ExprNamed { target, value, range: range_of(node) }))
+            Some(Expr::Named(ExprNamed {
+                target,
+                value,
+                range: range_of(node),
+            }))
         }
         "await" => {
-            let value = node.child(1)
+            let value = node
+                .child(1)
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            Some(Expr::Await(ExprAwait { value, range: range_of(node) }))
+            Some(Expr::Await(ExprAwait {
+                value,
+                range: range_of(node),
+            }))
         }
         "yield" => {
-            let value = node.child(1)
-                .and_then(|n| parse_expr(n, src))
-                .map(Box::new);
-            Some(Expr::Yield(ExprYield { value, range: range_of(node) }))
+            let value = node.child(1).and_then(|n| parse_expr(n, src)).map(Box::new);
+            Some(Expr::Yield(ExprYield {
+                value,
+                range: range_of(node),
+            }))
         }
         "starred_expression" => {
-            let value = node.child(1)
+            let value = node
+                .child(1)
                 .and_then(|n| parse_expr(n, src))
                 .map(Box::new)?;
-            Some(Expr::Starred(ExprStarred { value, range: range_of(node) }))
+            Some(Expr::Starred(ExprStarred {
+                value,
+                range: range_of(node),
+            }))
         }
-        "parenthesized_expression" => {
-            node.child(1).and_then(|n| parse_expr(n, src))
-        }
+        "parenthesized_expression" => node.child(1).and_then(|n| parse_expr(n, src)),
         _ => None,
     }
 }
@@ -1076,7 +1303,12 @@ fn parse_comparison(node: Node, src: &str) -> Option<Expr> {
         i += 1;
     }
 
-    Some(Expr::Compare(ExprCompare { left, ops, comparators, range: range_of(node) }))
+    Some(Expr::Compare(ExprCompare {
+        left,
+        ops,
+        comparators,
+        range: range_of(node),
+    }))
 }
 
 fn parse_arguments(node: Node, src: &str) -> Arguments {
@@ -1087,17 +1319,27 @@ fn parse_arguments(node: Node, src: &str) -> Arguments {
     for child in node.children(&mut cursor) {
         match child.kind() {
             "keyword_argument" => {
-                let name = child.child_by_field_name("name")
+                let name = child
+                    .child_by_field_name("name")
                     .map(|n| text_of(n, src).to_string());
-                let value = child.child_by_field_name("value")
+                let value = child
+                    .child_by_field_name("value")
                     .and_then(|n| parse_expr(n, src));
                 if let Some(v) = value {
-                    keywords.push(Keyword { arg: name, value: v, range: range_of(child) });
+                    keywords.push(Keyword {
+                        arg: name,
+                        value: v,
+                        range: range_of(child),
+                    });
                 }
             }
             "dictionary_splat" => {
                 if let Some(expr) = child.child(1).and_then(|n| parse_expr(n, src)) {
-                    keywords.push(Keyword { arg: None, value: expr, range: range_of(child) });
+                    keywords.push(Keyword {
+                        arg: None,
+                        value: expr,
+                        range: range_of(child),
+                    });
                 }
             }
             "list_splat" => {
@@ -1117,7 +1359,11 @@ fn parse_arguments(node: Node, src: &str) -> Arguments {
         }
     }
 
-    Arguments { args, keywords, range: range_of(node) }
+    Arguments {
+        args,
+        keywords,
+        range: range_of(node),
+    }
 }
 
 fn parse_comprehension_generators(node: Node, src: &str) -> Vec<Comprehension> {
@@ -1125,12 +1371,20 @@ fn parse_comprehension_generators(node: Node, src: &str) -> Vec<Comprehension> {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if child.kind() == "for_in_clause" {
-            let target = child.child_by_field_name("left")
+            let target = child
+                .child_by_field_name("left")
                 .and_then(|n| parse_expr(n, src))
-                .unwrap_or(Expr::Name(ExprName { id: "_".into(), range: range_of(child) }));
-            let iter = child.child_by_field_name("right")
+                .unwrap_or(Expr::Name(ExprName {
+                    id: "_".into(),
+                    range: range_of(child),
+                }));
+            let iter = child
+                .child_by_field_name("right")
                 .and_then(|n| parse_expr(n, src))
-                .unwrap_or(Expr::Name(ExprName { id: "_".into(), range: range_of(child) }));
+                .unwrap_or(Expr::Name(ExprName {
+                    id: "_".into(),
+                    range: range_of(child),
+                }));
             generators.push(Comprehension {
                 target,
                 iter,
@@ -1149,26 +1403,42 @@ fn parse_comprehension_generators(node: Node, src: &str) -> Vec<Comprehension> {
 }
 
 fn parse_list_comp(node: Node, src: &str) -> Option<Expr> {
-    let elt = node.child_by_field_name("body")
+    let elt = node
+        .child_by_field_name("body")
         .and_then(|n| parse_expr(n, src))
         .map(Box::new)?;
     let generators = parse_comprehension_generators(node, src);
-    Some(Expr::ListComp(ExprListComp { elt, generators, range: range_of(node) }))
+    Some(Expr::ListComp(ExprListComp {
+        elt,
+        generators,
+        range: range_of(node),
+    }))
 }
 
 fn parse_set_comp(node: Node, src: &str) -> Option<Expr> {
-    let elt = node.child_by_field_name("body")
+    let elt = node
+        .child_by_field_name("body")
         .and_then(|n| parse_expr(n, src))
         .map(Box::new)?;
     let generators = parse_comprehension_generators(node, src);
-    Some(Expr::SetComp(ExprSetComp { elt, generators, range: range_of(node) }))
+    Some(Expr::SetComp(ExprSetComp {
+        elt,
+        generators,
+        range: range_of(node),
+    }))
 }
 
 fn parse_dict_comp(node: Node, src: &str) -> Option<Expr> {
     let body = node.child_by_field_name("body");
     let (key, value) = if let Some(b) = body {
-        let k = b.child_by_field_name("key").and_then(|n| parse_expr(n, src)).map(Box::new);
-        let v = b.child_by_field_name("value").and_then(|n| parse_expr(n, src)).map(Box::new);
+        let k = b
+            .child_by_field_name("key")
+            .and_then(|n| parse_expr(n, src))
+            .map(Box::new);
+        let v = b
+            .child_by_field_name("value")
+            .and_then(|n| parse_expr(n, src))
+            .map(Box::new);
         (k, v)
     } else {
         (None, None)
@@ -1176,15 +1446,25 @@ fn parse_dict_comp(node: Node, src: &str) -> Option<Expr> {
     let key = key?;
     let value = value?;
     let generators = parse_comprehension_generators(node, src);
-    Some(Expr::DictComp(ExprDictComp { key, value, generators, range: range_of(node) }))
+    Some(Expr::DictComp(ExprDictComp {
+        key,
+        value,
+        generators,
+        range: range_of(node),
+    }))
 }
 
 fn parse_generator(node: Node, src: &str) -> Option<Expr> {
-    let elt = node.child_by_field_name("body")
+    let elt = node
+        .child_by_field_name("body")
         .and_then(|n| parse_expr(n, src))
         .map(Box::new)?;
     let generators = parse_comprehension_generators(node, src);
-    Some(Expr::Generator(ExprGenerator { elt, generators, range: range_of(node) }))
+    Some(Expr::Generator(ExprGenerator {
+        elt,
+        generators,
+        range: range_of(node),
+    }))
 }
 
 #[cfg(test)]

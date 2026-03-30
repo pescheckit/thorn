@@ -259,7 +259,14 @@ mod tests {
     use super::*;
     use thorn_api::{Diagnostic, Level};
 
-    fn make_diag(code: &str, msg: &str, file: &str, line: u32, col: u32, level: Level) -> Diagnostic {
+    fn make_diag(
+        code: &str,
+        msg: &str,
+        file: &str,
+        line: u32,
+        col: u32,
+        level: Level,
+    ) -> Diagnostic {
         let mut d = Diagnostic::new(code, msg, file).with_level(level);
         d.line = Some(line);
         d.col = Some(col);
@@ -268,8 +275,22 @@ mod tests {
 
     fn sample_diagnostics() -> Vec<Diagnostic> {
         vec![
-            make_diag("DJ001", "Avoid nullable CharField", "models.py", 10, 5, Level::Fix),
-            make_diag("DJ012", "Use select_related", "views.py", 42, 12, Level::Improve),
+            make_diag(
+                "DJ001",
+                "Avoid nullable CharField",
+                "models.py",
+                10,
+                5,
+                Level::Fix,
+            ),
+            make_diag(
+                "DJ012",
+                "Use select_related",
+                "views.py",
+                42,
+                12,
+                Level::Improve,
+            ),
             make_diag("DJ050", "Unused import", "utils.py", 1, 1, Level::All),
         ]
     }
@@ -296,7 +317,10 @@ mod tests {
         assert_eq!(first["severity"], "major");
         assert_eq!(first["location"]["path"], "models.py");
         assert_eq!(first["location"]["lines"]["begin"], 10);
-        assert!(first["description"].as_str().unwrap().contains("Avoid nullable CharField"));
+        assert!(first["description"]
+            .as_str()
+            .unwrap()
+            .contains("Avoid nullable CharField"));
         // fingerprint is a 32-char hex string
         let fp = first["fingerprint"].as_str().unwrap();
         assert_eq!(fp.len(), 32);
@@ -403,7 +427,10 @@ mod tests {
         let out = sarif(&[d]);
         let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
         let loc = &parsed["runs"][0]["results"][0]["locations"][0]["physicalLocation"];
-        assert!(loc.get("region").is_none(), "region should be omitted when no line");
+        assert!(
+            loc.get("region").is_none(),
+            "region should be omitted when no line"
+        );
     }
 
     #[test]

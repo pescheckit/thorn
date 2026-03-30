@@ -32,12 +32,7 @@ impl<'a> CheckContext<'a> {
         }
     }
 
-    pub fn diag(
-        &self,
-        code: &str,
-        msg: impl Into<String>,
-        range: ByteRange,
-    ) -> Diagnostic {
+    pub fn diag(&self, code: &str, msg: impl Into<String>, range: ByteRange) -> Diagnostic {
         Diagnostic {
             code: code.into(),
             message: msg.into(),

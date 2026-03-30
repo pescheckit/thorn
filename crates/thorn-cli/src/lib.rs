@@ -30,8 +30,13 @@ pub fn run(plugins_fn: fn() -> Vec<Box<dyn Plugin>>) {
         .and_then(|p| std::fs::read_to_string(p).ok())
         .unwrap_or_default();
 
-    let (mut linter, dynamic_diagnostics) =
-        init_plugins(plugins_fn, &matches, &plugin_params, &path, &pyproject_content);
+    let (mut linter, dynamic_diagnostics) = init_plugins(
+        plugins_fn,
+        &matches,
+        &plugin_params,
+        &path,
+        &pyproject_content,
+    );
 
     let all_excludes = merge_excludes(&file_config, excludes, &linter, &pyproject_content);
     if !all_excludes.is_empty() {
