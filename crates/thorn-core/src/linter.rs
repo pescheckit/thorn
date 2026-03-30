@@ -1,9 +1,9 @@
 use rayon::prelude::*;
-use ruff_python_parser::parse;
 use std::path::Path;
 use thorn_api::{AppGraph, CheckContext, Diagnostic, Plugin};
 
 use crate::discover;
+use crate::parser;
 use crate::suppress;
 
 /// The main linter engine. Holds registered plugins and runs checks.
@@ -35,23 +35,12 @@ impl Linter {
 
     /// Lint a single source string.
     pub fn lint_source(&self, source: &str, filename: &str) -> Vec<Diagnostic> {
-        let parsed = match parse(source, ruff_python_parser::Mode::Module.into()) {
-            Ok(p) => p,
-            Err(_) => return vec![],
+        let module = match parser::parse_python(source) {
+            Some(m) => m,
+            None => return vec![],
         };
 
-        let module = parsed
-            .into_syntax()
-            .module()
-            .expect("parsed as module")
-            .clone();
-
-        let ctx = CheckContext {
-            module: &module,
-            source,
-            filename,
-            graph: &self.graph,
-        };
+        let ctx = CheckContext::new(&module, source, filename, &self.graph);
 
         let mut diagnostics = Vec::new();
         for plugin in &self.plugins {
@@ -116,8 +105,8 @@ impl Linter {
 
         diagnostics.sort_by(|a, b| {
             a.filename.cmp(&b.filename).then_with(|| {
-                let a_start = a.range.map(|r| r.start());
-                let b_start = b.range.map(|r| r.start());
+                let a_start = a.range.map(|r| r.start);
+                let b_start = b.range.map(|r| r.start);
                 a_start.cmp(&b_start)
             })
         });

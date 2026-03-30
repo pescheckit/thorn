@@ -17,10 +17,9 @@ authors = ["Bram"]
 thorn-api = { path = "crates/thorn-api" }
 thorn-core = { path = "crates/thorn-core" }
 
-# Ruff crates (git deps — not published on crates.io)
-ruff_python_parser = { git = "https://github.com/astral-sh/ruff", tag = "0.11.6" }
-ruff_python_ast = { git = "https://github.com/astral-sh/ruff", tag = "0.11.6" }
-ruff_text_size = { git = "https://github.com/astral-sh/ruff", tag = "0.11.6" }
+# Parser
+tree-sitter = "0.24"
+tree-sitter-python = "0.23"
 
 # External
 rayon = "1.10"

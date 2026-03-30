@@ -1,5 +1,23 @@
-use ruff_text_size::TextRange;
 use serde::{Deserialize, Serialize};
+
+/// A byte offset range in source code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ByteRange {
+    pub start: u32,
+    pub end: u32,
+}
+
+impl ByteRange {
+    pub fn new(start: u32, end: u32) -> Self {
+        Self { start, end }
+    }
+}
+
+impl From<(u32, u32)> for ByteRange {
+    fn from((start, end): (u32, u32)) -> Self {
+        Self { start, end }
+    }
+}
 
 /// What level of checking should surface this diagnostic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -30,8 +48,7 @@ fn default_level() -> Level {
 pub struct Diagnostic {
     pub code: String,
     pub message: String,
-    #[serde(with = "opt_range")]
-    pub range: Option<TextRange>,
+    pub range: Option<ByteRange>,
     pub filename: String,
     #[serde(default)]
     pub line: Option<u32>,
@@ -58,7 +75,7 @@ impl Diagnostic {
         }
     }
 
-    pub fn with_range(mut self, range: TextRange) -> Self {
+    pub fn with_range(mut self, range: ByteRange) -> Self {
         self.range = Some(range);
         self
     }
@@ -70,7 +87,7 @@ impl Diagnostic {
 
     pub fn resolve_location(&mut self, source: &str) {
         if let Some(range) = self.range {
-            let offset = u32::from(range.start()) as usize;
+            let offset = range.start as usize;
             if offset <= source.len() {
                 let before = &source[..offset];
                 let line = before.chars().filter(|c| *c == '\n').count() + 1;
@@ -97,31 +114,5 @@ impl std::fmt::Display for Diagnostic {
             ),
             _ => write!(f, "{}: {} {}", self.filename, self.code, self.message),
         }
-    }
-}
-
-mod opt_range {
-    use ruff_text_size::{TextRange, TextSize};
-    use serde::{self, Deserialize, Deserializer, Serialize, Serializer};
-
-    #[derive(Serialize, Deserialize)]
-    struct RangePair(u32, u32);
-
-    pub fn serialize<S>(range: &Option<TextRange>, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match range {
-            Some(r) => RangePair(u32::from(r.start()), u32::from(r.end())).serialize(serializer),
-            None => serializer.serialize_none(),
-        }
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<TextRange>, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let opt: Option<RangePair> = Option::deserialize(deserializer)?;
-        Ok(opt.map(|p| TextRange::new(TextSize::new(p.0), TextSize::new(p.1))))
     }
 }

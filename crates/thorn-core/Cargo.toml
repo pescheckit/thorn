@@ -7,7 +7,7 @@ license.workspace = true
 
 [dependencies]
 thorn-api = { workspace = true }
-ruff_python_parser = { workspace = true }
-ruff_python_ast = { workspace = true }
+tree-sitter = { workspace = true }
+tree-sitter-python = { workspace = true }
 rayon = { workspace = true }
 walkdir = { workspace = true }
