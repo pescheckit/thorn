@@ -603,7 +603,7 @@ dependencies = [
 
 [[package]]
 name = "thorn-api"
-version = "0.1.0"
+version = "0.0.0-dev"
 dependencies = [
  "ruff_python_ast",
  "ruff_text_size",
@@ -612,7 +612,7 @@ dependencies = [
 
 [[package]]
 name = "thorn-cli"
-version = "0.1.0"
+version = "0.0.0-dev"
 dependencies = [
  "clap",
  "colored",
@@ -626,7 +626,7 @@ dependencies = [
 
 [[package]]
 name = "thorn-core"
-version = "0.1.0"
+version = "0.0.0-dev"
 dependencies = [
  "rayon",
  "ruff_python_ast",

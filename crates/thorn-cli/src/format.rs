@@ -185,7 +185,7 @@ pub fn sarif(diagnostics: &[Diagnostic]) -> String {
             tool: SarifTool {
                 driver: SarifDriver {
                     name: "thorn",
-                    version: env!("CARGO_PKG_VERSION"),
+                    version: env!("THORN_VERSION"),
                 },
             },
             results,

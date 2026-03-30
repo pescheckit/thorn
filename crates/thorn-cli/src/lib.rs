@@ -67,7 +67,7 @@ type PluginParams = Vec<(String, Vec<(String, bool)>)>;
 
 fn parse_args(plugins_fn: fn() -> Vec<Box<dyn Plugin>>) -> (ArgMatches, PluginParams) {
     let mut cmd = Command::new("thorn")
-        .version(env!("CARGO_PKG_VERSION"))
+        .version(env!("THORN_VERSION"))
         .about("A fast linter with live framework introspection")
         .arg(
             Arg::new("path")
