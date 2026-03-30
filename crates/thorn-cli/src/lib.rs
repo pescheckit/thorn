@@ -1,7 +1,7 @@
 pub mod config;
+pub mod format;
 
-use clap::{Arg, Command};
-use colored::Colorize;
+use clap::{Arg, ArgMatches, Command};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use thorn_api::Plugin;
@@ -11,6 +11,61 @@ use config::ThornConfig;
 /// Run the thorn CLI with the given plugins.
 /// Call this from your binary with your plugins registered.
 pub fn run(plugins_fn: fn() -> Vec<Box<dyn Plugin>>) {
+    let (matches, plugin_params) = parse_args(plugins_fn);
+
+    let path = PathBuf::from(matches.get_one::<String>("path").unwrap());
+    let format = matches.get_one::<String>("format").unwrap().clone();
+    let check = matches.get_one::<String>("check").unwrap().clone();
+    let excludes: Vec<String> = matches
+        .get_many::<String>("exclude")
+        .map(|v| v.cloned().collect())
+        .unwrap_or_default();
+    let ignores: Vec<String> = matches
+        .get_many::<String>("ignore")
+        .map(|v| v.cloned().collect())
+        .unwrap_or_default();
+
+    let file_config = ThornConfig::from_project_dir(&path);
+    let pyproject_content = config::find_pyproject(&path)
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .unwrap_or_default();
+
+    let (mut linter, dynamic_diagnostics) =
+        init_plugins(plugins_fn, &matches, &plugin_params, &path, &pyproject_content);
+
+    let all_excludes = merge_excludes(&file_config, excludes, &linter, &pyproject_content);
+    if !all_excludes.is_empty() {
+        linter.set_excludes(all_excludes);
+    }
+
+    if matches.get_flag("list-plugins") {
+        println!("Registered plugins:");
+        for (name, prefix) in linter.plugin_summary() {
+            println!("  [{prefix}] {name}");
+        }
+        return;
+    }
+
+    let diagnostics = collect_diagnostics(
+        &linter,
+        &path,
+        &pyproject_content,
+        dynamic_diagnostics,
+        &check,
+        &file_config,
+        ignores,
+    );
+
+    if format::render(&format, &diagnostics) {
+        std::process::exit(1);
+    }
+}
+
+// ── CLI parsing ────────────────────────────────────────────────────
+
+type PluginParams = Vec<(String, Vec<(String, bool)>)>;
+
+fn parse_args(plugins_fn: fn() -> Vec<Box<dyn Plugin>>) -> (ArgMatches, PluginParams) {
     let mut cmd = Command::new("thorn")
         .version(env!("CARGO_PKG_VERSION"))
         .about("A fast linter with live framework introspection")
@@ -23,8 +78,8 @@ pub fn run(plugins_fn: fn() -> Vec<Box<dyn Plugin>>) {
             Arg::new("format")
                 .long("format")
                 .default_value("text")
-                .value_parser(["text", "json"])
-                .help("Output format"),
+                .value_parser(["text", "json", "gitlab", "github", "sarif"])
+                .help("Output format: text, json, gitlab, github, sarif"),
         )
         .arg(
             Arg::new("exclude")
@@ -54,9 +109,8 @@ pub fn run(plugins_fn: fn() -> Vec<Box<dyn Plugin>>) {
                 .help("List registered plugins and exit"),
         );
 
-    // Ask each plugin for its CLI params
     let plugins_tmp = plugins_fn();
-    let mut plugin_params: Vec<(String, Vec<(String, bool)>)> = Vec::new();
+    let mut plugin_params: PluginParams = Vec::new();
 
     for plugin in &plugins_tmp {
         let params = plugin.cli_params();
@@ -80,27 +134,20 @@ pub fn run(plugins_fn: fn() -> Vec<Box<dyn Plugin>>) {
     drop(plugins_tmp);
 
     let matches = cmd.get_matches();
+    (matches, plugin_params)
+}
 
-    let path = PathBuf::from(matches.get_one::<String>("path").unwrap());
-    let format = matches.get_one::<String>("format").unwrap().clone();
-    let check = matches.get_one::<String>("check").unwrap().clone();
-    let excludes: Vec<String> = matches
-        .get_many::<String>("exclude")
-        .map(|v| v.cloned().collect())
-        .unwrap_or_default();
-    let ignores: Vec<String> = matches
-        .get_many::<String>("ignore")
-        .map(|v| v.cloned().collect())
-        .unwrap_or_default();
-    let list_plugins = matches.get_flag("list-plugins");
+// ── Plugin initialization ──────────────────────────────────────────
 
-    let file_config = ThornConfig::from_project_dir(&path);
-    let resolved_path = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
-    let pyproject_content = config::find_pyproject(&path)
-        .and_then(|p| std::fs::read_to_string(p).ok())
-        .unwrap_or_default();
+fn init_plugins(
+    plugins_fn: fn() -> Vec<Box<dyn Plugin>>,
+    matches: &ArgMatches,
+    plugin_params: &PluginParams,
+    path: &PathBuf,
+    pyproject_content: &str,
+) -> (thorn_core::Linter, Vec<thorn_api::Diagnostic>) {
+    let resolved_path = std::fs::canonicalize(path).unwrap_or_else(|_| path.clone());
 
-    // Initialize plugins
     let mut plugins = plugins_fn();
     let mut graph = thorn_api::AppGraph::default();
     let mut dynamic_diagnostics = Vec::new();
@@ -120,7 +167,7 @@ pub fn run(plugins_fn: fn() -> Vec<Box<dyn Plugin>>) {
             }
         }
 
-        let result = plugin.initialize(&resolved_path, &pyproject_content, &cli_args);
+        let result = plugin.initialize(&resolved_path, pyproject_content, &cli_args);
         if !result.graph.models.is_empty() {
             graph = result.graph;
         }
@@ -132,29 +179,42 @@ pub fn run(plugins_fn: fn() -> Vec<Box<dyn Plugin>>) {
         linter.register(plugin);
     }
 
-    let mut all_excludes = file_config.exclude.clone();
-    all_excludes.extend(excludes);
+    (linter, dynamic_diagnostics)
+}
+
+// ── Exclude merging ────────────────────────────────────────────────
+
+fn merge_excludes(
+    file_config: &ThornConfig,
+    cli_excludes: Vec<String>,
+    linter: &thorn_core::Linter,
+    pyproject_content: &str,
+) -> Vec<String> {
+    let mut all = file_config.exclude.clone();
+    all.extend(cli_excludes);
     if !pyproject_content.is_empty() {
-        for plugin_excludes in linter.plugin_config_excludes(&pyproject_content) {
-            all_excludes.extend(plugin_excludes);
+        for plugin_excludes in linter.plugin_config_excludes(pyproject_content) {
+            all.extend(plugin_excludes);
         }
     }
-    if !all_excludes.is_empty() {
-        linter.set_excludes(all_excludes);
-    }
+    all
+}
 
-    if list_plugins {
-        println!("Registered plugins:");
-        for (name, prefix) in linter.plugin_summary() {
-            println!("  [{prefix}] {name}");
-        }
-        return;
-    }
+// ── Diagnostic collection & filtering ──────────────────────────────
 
-    let mut diagnostics = linter.lint_dir_with_config(&path, &pyproject_content);
+fn collect_diagnostics(
+    linter: &thorn_core::Linter,
+    path: &PathBuf,
+    pyproject_content: &str,
+    dynamic_diagnostics: Vec<thorn_api::Diagnostic>,
+    check: &str,
+    file_config: &ThornConfig,
+    cli_ignores: Vec<String>,
+) -> Vec<thorn_api::Diagnostic> {
+    let mut diagnostics = linter.lint_dir_with_config(path, pyproject_content);
     diagnostics.extend(dynamic_diagnostics);
 
-    let min_level = match check.as_str() {
+    let min_level = match check {
         "fix" => thorn_api::Level::Fix,
         "all" => thorn_api::Level::All,
         _ => thorn_api::Level::Improve,
@@ -162,12 +222,13 @@ pub fn run(plugins_fn: fn() -> Vec<Box<dyn Plugin>>) {
     diagnostics.retain(|d| d.level <= min_level);
 
     let mut ignored_codes = file_config.ignore.clone();
-    ignored_codes.extend(ignores);
+    ignored_codes.extend(cli_ignores);
     if !ignored_codes.is_empty() {
         diagnostics.retain(|d| !ignored_codes.contains(&d.code));
     }
 
-    let base = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+    // Strip base path prefix for relative display
+    let base = std::fs::canonicalize(path).unwrap_or_else(|_| path.clone());
     let base_str = base.to_string_lossy();
     for d in &mut diagnostics {
         if d.filename.starts_with(base_str.as_ref()) {
@@ -177,40 +238,5 @@ pub fn run(plugins_fn: fn() -> Vec<Box<dyn Plugin>>) {
         }
     }
 
-    match format.as_str() {
-        "json" => {
-            let json = serde_json::to_string_pretty(&diagnostics).unwrap();
-            println!("{json}");
-        }
-        _ => {
-            for d in &diagnostics {
-                let code = d.code.red().bold();
-                let location = match (d.line, d.col) {
-                    (Some(line), Some(col)) => format!("{}:{}:{}", d.filename, line, col),
-                    (Some(line), None) => format!("{}:{}", d.filename, line),
-                    _ => d.filename.clone(),
-                };
-                let level = d.level.label().dimmed();
-                let msg = d
-                    .message
-                    .lines()
-                    .map(|l| l.trim())
-                    .filter(|l| !l.is_empty())
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                println!("{}  {} {} {}", location, level, code, msg);
-            }
-            if diagnostics.is_empty() {
-                eprintln!("{} No issues found.", "✓".green());
-            } else {
-                eprintln!(
-                    "\n{} Found {} issue{}.",
-                    "✗".red(),
-                    diagnostics.len(),
-                    if diagnostics.len() == 1 { "" } else { "s" }
-                );
-                std::process::exit(1);
-            }
-        }
-    }
+    diagnostics
 }
